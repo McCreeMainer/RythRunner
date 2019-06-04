@@ -1,47 +1,25 @@
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.geometry.Point2D;
-import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
 
 
 public class Runner extends Pane {
+    private static int size = Main.getBlockSize() * 3;
+    private static boolean canJump = true;
 
-    public int qte = 0;
-    public int highJump = 0;
-    public boolean superJump = false;
-    public StringBuilder qteCombo = null;
+    private int highJump = 0;
+    private boolean superJump = false;
+    private boolean ignorePlatform = false;
 
-    public static boolean ignorePlatform = false;
-    public static boolean canJump = true;
-
-    public static int size = Main.block * 3;
-    public Point2D position = new Point2D(Main.speed, Main.fall * 2);
-    Label label = new Label();
-    Image run = new Image(getClass().getResourceAsStream("map1/run.png"), 0, size, true, false);
-    ImageView imageView = new ImageView(run);
+    private Point2D position = new Point2D(Main.getSpeed(), fallSpeed(0) * 2);
+    private QTEBlock qte = null;
+    private Image run = new Image(getClass().getResourceAsStream("0/run.png"), 0, size, true, false);
+    private ImageView imageView = new ImageView(run);
 
     Runner() {
-        label.setFont(new Font(Main.block / 3));
-        label.setAlignment(Pos.TOP_CENTER);
-        label.setTextFill(Color.WHITE);
-        label.setTranslateX(Runner.size);
-        label.setMinHeight(Main.block / 2);
-        label.setBackground(
-                new Background(new BackgroundImage(
-                        new Image(getClass().getResourceAsStream("map1/qte.png"), 0, Main.block / 2, true, false),
-                        BackgroundRepeat.REPEAT,
-                        BackgroundRepeat.REPEAT,
-                        BackgroundPosition.DEFAULT,
-                        BackgroundSize.DEFAULT
-                ))
-        );
         new Running(imageView);
-        getChildren().addAll(imageView, label);
+        getChildren().add(imageView);
     }
 
     public void moveX(int value) {
@@ -51,49 +29,47 @@ public class Runner extends Pane {
     public void moveY(int value) {
         boolean moveDown = value > 0;
         for (int i = 0; i < Math.abs(value); i++) {
-            for (Platform platform : Main.platforms) {
+            for (Platforma platforma : Main.getPlatforms()) {
                 if (
                         moveDown &&
-                        this.getBoundsInParent().intersects(platform.getBoundsInParent()) &&
-                        this.getTranslateY() + size == platform.getTranslateY() &&
-                        this.getTranslateX() + Main.block * 1.4 < platform.getTranslateX() + platform.count * Main.block &&
-                        !platform.failed
+                        this.getBoundsInParent().intersects(platforma.getBoundsInParent()) &&
+                        this.getTranslateY() + size == platforma.getTranslateY() &&
+                        this.getTranslateX() + Main.getBlockSize() * 1.4 < platforma.getTranslateX() + platforma.getLength() * Main.getBlockSize() &&
+                        !platforma.isFailed()
                 ) {
 
-                    if (!platform.active) {
-                        platform.activate();
-                        if (platform.quickTime != null) {
-                            qteCombo = new StringBuilder(platform.quickTime);
-                            qte = qteCombo.length();
-                            label.setText(qteCombo.toString());
-                            label.setMinWidth(Main.block / 2 * qteCombo.toString().length());
+                    if (!platforma.isActive()) {
+                        platforma.activate();
+                        if (platforma.getQTE() != null) {
+                            qte = new QTEBlock(new StringBuilder(platforma.getQTE()));
+                            getChildren().add(qte);
                         }
                         else {
-                            qteCombo = null;
-                            qte = 0;
-                            label.setText("");
-                            label.setMinWidth(0);
+                            if (qte != null) {
+                                getChildren().remove(qte);
+                                qte = null;
+                            }
                         }
-                        superJump = platform.superJump;
+                        superJump = platforma.isSuperJump();
                     }
                     if (ignorePlatform) {
                         ignorePlatform = false;
-                        platform.fail();
+                        platforma.fail();
                     }
-                    if (platform.active){
+                    if (platforma.isActive()){
                         this.setTranslateY(this.getTranslateY() - 1);
-                        position = new Point2D(Main.speed, Main.fall * 2);
+                        position = new Point2D(Main.getSpeed(), fallSpeed(0) * 2);
                         canJump = true;
-                        Main.score++;
+                        Main.scor();
                     }
                     return;
                 }
                 else canJump = false;
             }
             this.setTranslateY(this.getTranslateY() + (moveDown ? 1 : -1));
-            if (getTranslateY() >= Main.resolution.height) {
+            if (getTranslateY() >= Main.getResolution().height) {
                 setTranslateY(-size);
-                for (Platform platform : Main.platforms) platform.rollback();
+                for (Platforma platforma : Main.getPlatforms()) platforma.rollback();
             }
         }
     }
@@ -117,19 +93,36 @@ public class Runner extends Pane {
         }
     }
 
-    public void quick() {
-        qteCombo.deleteCharAt(0);
-        qte--;
-        highJump++;
-        label.setText(qteCombo.toString());
-        label.setMinWidth(Main.block / 2 * qteCombo.toString().length());
-        if (qte == 0) {
-            qteCombo = null;
-            label.setText("");
+    public void quick(String key) {
+        if (qte != null) {
+            if (key.charAt(0) == qte.getQte().charAt(0)) {
+                qte.check();
+            }
+            highJump++;
+            if (qte.getQte().length() == 0) {
+                getChildren().remove(qte);
+                qte = null;
+            }
         }
     }
 
+    public Point2D getPosition() {
+        return position;
+    }
+
+    public void addPosition() {
+        position = position.add(0, 1);
+    }
+
+    public static int getSize() {
+        return size;
+    }
+
+    public static boolean getJump() {
+        return canJump;
+    }
+
     public int fallSpeed(int x) {
-        return (int) (Math.sqrt(Main.block * 8 * (2.5 + x) + 1) - 1) / 2;
+        return (int) (Math.sqrt(Main.getBlockSize() * 8 * (2.5 + x) + 1) - 1) / 2;
     }
 }

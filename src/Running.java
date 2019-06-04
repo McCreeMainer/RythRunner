@@ -13,23 +13,23 @@ public class Running extends Transition {
 
     Running(ImageView imageView) {
         this.imageView = imageView;
-        imageView.setFitHeight(Runner.size);
-        imageView.setFitWidth(Runner.size);
+        imageView.setFitHeight(Runner.getSize());
+        imageView.setFitWidth(Runner.getSize());
         setCycleDuration(duration);
         setCycleCount(Animation.INDEFINITE);
         setInterpolator(Interpolator.LINEAR);
-        this.imageView.setViewport(new Rectangle2D(0, 0, Runner.size, Runner.size));
+        this.imageView.setViewport(new Rectangle2D(0, 0, Runner.getSize(), Runner.getSize()));
         play();
     }
     protected void interpolate(double f) {
         final int index = Math.min((int) Math.floor(f * count), count - 1);
         int x;
-        if (!Runner.canJump) {
+        if (!Runner.getJump()) {
             x = columns - 1;
         }
         else if (index < columns - 1) x = index;
         else x = columns - index % (columns - 2) - 2;
-        imageView.setViewport(new Rectangle2D(x * (int) imageView.getFitWidth(), 0, Runner.size, Runner.size));
+        imageView.setViewport(new Rectangle2D(x * (int) imageView.getFitWidth(), 0, Runner.getSize(), Runner.getSize()));
     }
 
 
